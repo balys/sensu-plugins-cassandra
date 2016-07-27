@@ -59,21 +59,21 @@ class CheckCassandraNodeStats < Sensu::Plugin::Check::CLI
          description: 'Gossip protocol status',
          boolean: true,
          default: false
-         
+
   option :thrift,
          short: '-t',
          long: '--thrift',
          description: 'Thrift protocol status',
          boolean: true,
          default: false
-         
+
   option :nativetransport,
          short: '-n',
          long: '--native',
          description: 'NativeTransport protocol status',
          boolean: true,
-         default: false  
-  
+         default: false
+
   option :ndstatus,
          short: '-d',
          long: '--ndstatus',
@@ -103,9 +103,9 @@ class CheckCassandraNodeStats < Sensu::Plugin::Check::CLI
         ok gossip_attr.to_json
       end
     end
-  end   
-  
-  
+  end
+
+
   def parse_thrift# rubocop:disable all
     info = nodetool_cmd('info')
     info.each_line do |line|
@@ -116,8 +116,8 @@ class CheckCassandraNodeStats < Sensu::Plugin::Check::CLI
         ok thrift_attr.to_json
       end
     end
-  end    
-  
+  end
+
   def parse_nativetransport# rubocop:disable all
     info = nodetool_cmd('info')
     info.each_line do |line|
@@ -126,10 +126,10 @@ class CheckCassandraNodeStats < Sensu::Plugin::Check::CLI
         nativetransport_attr ={"#{config[:hostname]}.nativetransport_status" => status}
         critical nativetransport_attr.to_json if (status != 'true')
         ok nativetransport_attr.to_json
-      end  
+      end
     end
-  end 
-      
+  end
+
   # $ nodetool status
   # Datacenter: LON5
   # ================
@@ -144,31 +144,31 @@ class CheckCassandraNodeStats < Sensu::Plugin::Check::CLI
 
   def parse_ndstatus# rubocop:disable all
     nodestatus = nodetool_cmd('status')
-    nativetransport_attr = []
     nodestatus.each_line do |line|
       next if line.match(/^Datacenter:/)
-      next if line.match(/^================/)
-      next if line.match(/^Status=Up/)
-      next if line.match(/State=Normal/)
+      next if line.match(/^=======/)
+      next if line.match(/^Status/)
+      next if line.match(/State/)
       next if line.match(/^--/)
-      
+      next if line.match(/^Note/)
+
       if m = line.match(/^UN\s\s(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/)# rubocop:disable all
         address = m[1]
         ndstatus_attr = {"node.#{address}.status" => 'UN'}
-        ok ndstatus_attr.to_json
       else
         m = line.match(/(\w+)\s\s(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/)
-        (ndstatus,address) = m.captures
+        address = m[2]
+        ndstatus = m[1]
         ndstatus_attr = {"node.#{address}.status" => ndstatus}
         critical ndstatus_attr.to_json
       end
-
+      ok ndstatus_attr.to_json
     end
   end
 
   def run
     @timestamp = Time.now.to_i
-    
+
     parse_gossip if config[:gossip]
     parse_thrift if config[:thrift]
     parse_nativetransport if config[:nativetransport]
